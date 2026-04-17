@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "History-On",
-  "version": "1.0.0",
-  "description": "Premium Ultra-Responsive History Engine.",
+  "name": "History-On Pro",
+  "version": "2.0.0",
+  "description": "Next-Gen Aurora History Engine with Advanced Management.",
   "permissions": ["history", "storage"],
   "action": {
     "default_popup": "index.html"
