@@ -1,16 +1,16 @@
 # History-On 😈
 
-The ultimate, premium browser history search engine. 
+The most responsive and premium history engine for Chrome.
 
-## 🚀 Quick Setup
-1. Create a repository named `history-on`.
-2. Upload `manifest.json` and `.github/workflows/history-on-build.yml`.
-3. GitHub Actions will automatically generate **History-On-v1.zip** and push it to your main directory.
-4. Download the ZIP, extract it, and load it in `chrome://extensions`.
+## ⚡ Deployment
+1. Create a repo named `history-on`.
+2. Commit `manifest.json` and `.github/workflows/history-on-build.yml`.
+3. Wait 30 seconds for the **GitHub Action** to run.
+4. Refresh your repo—the `History-On-v1.zip` will appear in the main folder.
 
-## ✨ Features
-- **Premium Side-Panel UI:** Sleek, modern, and dark-themed.
-- **Auto-Sync Build:** The latest ZIP is always available in your repo.
-- **Lightning Fast:** Instant results with zero lag.
+## 💎 Features
+- **Official Branding:** Uses your custom Flaticon identity.
+- **Glass-Morphism UI:** Modern, dark, and high-performance.
+- **Side-Panel Feel:** Optimized for a sleek vertical experience.
 
-Built for **johirxofficial** by **Shadow**.
+Maintained by **johirxofficial** & Assistant **Shadow**.
