@@ -13,32 +13,40 @@ jobs:
 
       - name: Build Premium Assets
         run: |
-          # Professional Slide-in UI Design
+          # Professional UI with Responsive Slide Design
           cat <<EOF > index.html
           <!DOCTYPE html>
-          <html>
+          <html lang="en">
           <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-              body { width: 380px; height: 550px; padding: 0; margin: 0; font-family: 'Inter', sans-serif; background: #080808; color: #fff; overflow: hidden; border-left: 2px solid #3d5afe; }
-              .app-container { display: flex; flex-direction: column; height: 100%; padding: 20px; box-sizing: border-box; background: linear-gradient(145deg, #0a0a0a 0%, #111 100%); }
-              .header { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 20px; color: #3d5afe; display: flex; align-items: center; justify-content: space-between; }
-              .header span { font-size: 10px; background: #3d5afe33; padding: 4px 8px; border-radius: 20px; color: #3d5afe; }
-              .search-box { position: relative; width: 100%; }
-              input { width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid #222; background: #161616; color: #fff; box-sizing: border-box; outline: none; transition: 0.3s; font-size: 14px; }
-              input:focus { border-color: #3d5afe; box-shadow: 0 0 15px rgba(61, 90, 254, 0.2); }
-              #results { margin-top: 20px; flex-grow: 1; overflow-y: auto; scrollbar-width: none; }
+              :root { --primary: #3b82f6; --bg: #050505; --card: #121212; --text: #f8fafc; }
+              body { width: 380px; height: 550px; margin: 0; font-family: 'Segoe UI', system-ui; background: var(--bg); color: var(--text); overflow: hidden; }
+              .container { display: flex; flex-direction: column; height: 100%; border-left: 1px solid #222; background: linear-gradient(180deg, #0a0a0a 0%, #050505 100%); }
+              .header { padding: 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #1a1a1a; background: rgba(10,10,10,0.8); backdrop-filter: blur(10px); }
+              .header img { width: 32px; height: 32px; }
+              .header h1 { font-size: 18px; margin: 0; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(to right, #fff, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+              .search-wrap { padding: 15px; }
+              input { width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid #222; background: #111; color: #fff; box-sizing: border-box; outline: none; transition: 0.3s; font-size: 14px; }
+              input:focus { border-color: var(--primary); box-shadow: 0 0 20px rgba(59, 130, 246, 0.15); }
+              #results { flex-grow: 1; overflow-y: auto; padding: 0 15px 15px; scrollbar-width: none; }
               #results::-webkit-scrollbar { display: none; }
-              .item { padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.03); margin-bottom: 10px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(255,255,255,0.05); }
-              .item:hover { background: rgba(61, 90, 254, 0.1); border-color: #3d5afe; transform: translateX(5px); }
-              .title { font-weight: 600; font-size: 13px; color: #eee; margin-bottom: 4px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-              .url { font-size: 11px; color: #555; word-break: break-all; }
+              .item { padding: 12px; border-radius: 8px; background: var(--card); margin-bottom: 8px; cursor: pointer; transition: 0.2s; border: 1px solid transparent; animation: slideIn 0.3s ease-out forwards; }
+              .item:hover { background: #1a1a1a; border-color: var(--primary); transform: translateX(4px); }
+              .title { font-weight: 600; font-size: 13px; color: #fff; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+              .url { font-size: 11px; color: #64748b; word-break: break-all; margin-top: 4px; display: block; }
+              @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
             </style>
           </head>
           <body>
-            <div class="app-container">
-              <div class="header">History-On <span>PRO</span></div>
-              <div class="search-box">
-                <input type="text" id="search" placeholder="Type to search history..." autofocus>
+            <div class="container">
+              <div class="header">
+                <img src="icon.png" alt="Logo">
+                <h1>History-On</h1>
+              </div>
+              <div class="search-wrap">
+                <input type="text" id="search" placeholder="Search across time..." autofocus>
               </div>
               <div id="results"></div>
             </div>
@@ -47,43 +55,39 @@ jobs:
           </html>
           EOF
 
-          # Clean logic
+          # Efficient Search Logic
           cat <<EOF > script.js
           const searchInput = document.getElementById('search');
           const resultsDiv = document.getElementById('results');
 
-          const updateResults = (query = '') => {
-            chrome.history.search({ text: query, maxResults: 40, startTime: 0 }, (results) => {
-              resultsDiv.innerHTML = '';
-              results.forEach(page => {
-                const div = document.createElement('div');
-                div.className = 'item';
-                div.innerHTML = \`<span class="title">\${page.title || 'Unknown Page'}</span>
-                               <span class="url">\${page.url.substring(0, 50)}...</span>\`;
-                div.onclick = () => window.open(page.url, '_blank');
-                resultsDiv.appendChild(div);
-              });
+          const render = (query = '') => {
+            chrome.history.search({ text: query, maxResults: 50, startTime: 0 }, (data) => {
+              resultsDiv.innerHTML = data.map(page => \`
+                <div class="item" onclick="window.open('\${page.url}', '_blank')">
+                  <span class="title">\${page.title || 'Untitled'}</span>
+                  <span class="url">\${page.url}</span>
+                </div>
+              \`).join('');
             });
           };
 
-          searchInput.addEventListener('input', () => updateResults(searchInput.value));
-          updateResults(); // Initial load
+          searchInput.addEventListener('input', e => render(e.target.value));
+          render();
           EOF
 
-          # Fetch High-Quality Premium Icon
-          curl -L -o icon.png "https://flaticon.com"
+          # Fetch your Specific Logo
+          curl -L -o icon.png "https://cdn-icons-png.flaticon.com/512/3913/3913442.png"
 
-      - name: Create Clean Zip
+      - name: Package Master Extension
         run: |
-          mkdir dist
-          cp manifest.json index.html script.js icon.png dist/
-          cd dist
-          zip -r ../History-On-v1.zip .
+          mkdir -p build_dir
+          cp manifest.json index.html script.js icon.png build_dir/
+          cd build_dir && zip -r ../History-On-v1.zip . && cd ..
 
-      - name: Commit Zip to Main Repo
+      - name: Sync ZIP to Repo
         run: |
           git config --global user.name "johirxofficial"
-          git config --global user.email "johir@://github.com"
+          git config --global user.email "johirxofficial@gmail.com"
           git add History-On-v1.zip
-          git commit -m "Auto-build: History-On-v1.zip updated 😈" || echo "No changes to commit"
+          git commit -m "Shadow Update: History-On-v1.zip with official logo 🚀" || echo "No changes"
           git push
