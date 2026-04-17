@@ -1,0 +1,89 @@
+name: History-On Master Build
+on: [push]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Premium Assets
+        run: |
+          # Professional Slide-in UI Design
+          cat <<EOF > index.html
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              body { width: 380px; height: 550px; padding: 0; margin: 0; font-family: 'Inter', sans-serif; background: #080808; color: #fff; overflow: hidden; border-left: 2px solid #3d5afe; }
+              .app-container { display: flex; flex-direction: column; height: 100%; padding: 20px; box-sizing: border-box; background: linear-gradient(145deg, #0a0a0a 0%, #111 100%); }
+              .header { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 20px; color: #3d5afe; display: flex; align-items: center; justify-content: space-between; }
+              .header span { font-size: 10px; background: #3d5afe33; padding: 4px 8px; border-radius: 20px; color: #3d5afe; }
+              .search-box { position: relative; width: 100%; }
+              input { width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid #222; background: #161616; color: #fff; box-sizing: border-box; outline: none; transition: 0.3s; font-size: 14px; }
+              input:focus { border-color: #3d5afe; box-shadow: 0 0 15px rgba(61, 90, 254, 0.2); }
+              #results { margin-top: 20px; flex-grow: 1; overflow-y: auto; scrollbar-width: none; }
+              #results::-webkit-scrollbar { display: none; }
+              .item { padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.03); margin-bottom: 10px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(255,255,255,0.05); }
+              .item:hover { background: rgba(61, 90, 254, 0.1); border-color: #3d5afe; transform: translateX(5px); }
+              .title { font-weight: 600; font-size: 13px; color: #eee; margin-bottom: 4px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+              .url { font-size: 11px; color: #555; word-break: break-all; }
+            </style>
+          </head>
+          <body>
+            <div class="app-container">
+              <div class="header">History-On <span>PRO</span></div>
+              <div class="search-box">
+                <input type="text" id="search" placeholder="Type to search history..." autofocus>
+              </div>
+              <div id="results"></div>
+            </div>
+            <script src="script.js"></script>
+          </body>
+          </html>
+          EOF
+
+          # Clean logic
+          cat <<EOF > script.js
+          const searchInput = document.getElementById('search');
+          const resultsDiv = document.getElementById('results');
+
+          const updateResults = (query = '') => {
+            chrome.history.search({ text: query, maxResults: 40, startTime: 0 }, (results) => {
+              resultsDiv.innerHTML = '';
+              results.forEach(page => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = \`<span class="title">\${page.title || 'Unknown Page'}</span>
+                               <span class="url">\${page.url.substring(0, 50)}...</span>\`;
+                div.onclick = () => window.open(page.url, '_blank');
+                resultsDiv.appendChild(div);
+              });
+            });
+          };
+
+          searchInput.addEventListener('input', () => updateResults(searchInput.value));
+          updateResults(); // Initial load
+          EOF
+
+          # Fetch High-Quality Premium Icon
+          curl -L -o icon.png "https://flaticon.com"
+
+      - name: Create Clean Zip
+        run: |
+          mkdir dist
+          cp manifest.json index.html script.js icon.png dist/
+          cd dist
+          zip -r ../History-On-v1.zip .
+
+      - name: Commit Zip to Main Repo
+        run: |
+          git config --global user.name "johirxofficial"
+          git config --global user.email "johir@://github.com"
+          git add History-On-v1.zip
+          git commit -m "Auto-build: History-On-v1.zip updated 😈" || echo "No changes to commit"
+          git push
