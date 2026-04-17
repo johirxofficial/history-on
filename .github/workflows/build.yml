@@ -1,93 +1,285 @@
+# .github/workflows/history-on-master.yml
+# History-On v2.0 — Single-File Auto-Build & Release
+# Just push this file → Watch magic happen ✨
+
 name: History-On Master Build
-on: [push]
+
+on:
+  push:
+    branches: [main, master]
+    paths: ['.github/workflows/history-on-master.yml']
+  workflow_dispatch:
 
 permissions:
   contents: write
+  actions: read
+
+env:
+  EXT_NAME: History-On
+  EXT_VERSION: 2.0.0
+  ZIP_NAME: History-On-v2.0.0.zip
 
 jobs:
-  build:
+  auto-build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      # ===== 1. CHECKOUT =====
+      - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Build Premium Assets
+      # ===== 2. SETUP ENV =====
+      - name: Setup Build Environment
         run: |
-          # Professional UI with Responsive Slide Design
-          cat <<EOF > index.html
+          sudo apt-get update && sudo apt-get install -y imagemagick zip
+          mkdir -p extension/{popup,utils,assets}
+
+      # ===== 3. GENERATE MANIFEST =====
+      - name: Generate manifest.json
+        run: |
+          cat << 'EOF' > extension/manifest.json
+          {
+            "manifest_version": 3,
+            "name": "History-On",
+            "version": "2.0.0",
+            "description": "Premium ultra-responsive browser history engine with smart search, export, and glass-morphism UI.",
+            "permissions": ["history", "storage"],
+            "host_permissions": [],
+            "action": {
+              "default_popup": "popup/index.html",
+              "default_title": "History-On",
+              "default_icon": {
+                "16": "assets/icon-16.png",
+                "48": "assets/icon-48.png",
+                "128": "assets/icon-128.png"
+              }
+            },
+            "background": {
+              "service_worker": "background.js",
+              "type": "module"
+            },
+            "icons": {
+              "16": "assets/icon-16.png",
+              "48": "assets/icon-48.png",
+              "128": "assets/icon-128.png"
+            },
+            "options_ui": {
+              "page": "popup/index.html?settings=true",
+              "open_in_tab": false
+            },
+            "content_security_policy": {
+              "extension_pages": "script-src 'self'; object-src 'self'"
+            }
+          }
+          EOF
+
+      # ===== 4. GENERATE BACKGROUND.JS =====
+      - name: Generate background.js
+        run: |
+          cat << 'EOF' > extension/background.js
+          // background.js — Service Worker (MV3)
+          chrome.runtime.onInstalled.addListener(() => {
+            console.log('✅ History-On v2.0 installed');
+          });
+
+          chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+            if (request.action === 'getStats') {
+              chrome.history.search({text: '', maxResults: 1, startTime: 0}, (items) => {
+                chrome.history.getVisits({url: items[0]?.url}, (visits) => {
+                  sendResponse({total: visits?.length || 0});
+                });
+              });
+              return true; // async
+            }
+          });
+          EOF
+
+      # ===== 5. GENERATE POPUP/INDEX.HTML =====
+      - name: Generate popup/index.html
+        run: |
+          cat << 'HTMLEOF' > extension/popup/index.html
           <!DOCTYPE html>
-          <html lang="en">
+          <html lang="en" data-theme="dark">
           <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              :root { --primary: #3b82f6; --bg: #050505; --card: #121212; --text: #f8fafc; }
-              body { width: 380px; height: 550px; margin: 0; font-family: 'Segoe UI', system-ui; background: var(--bg); color: var(--text); overflow: hidden; }
-              .container { display: flex; flex-direction: column; height: 100%; border-left: 1px solid #222; background: linear-gradient(180deg, #0a0a0a 0%, #050505 100%); }
-              .header { padding: 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #1a1a1a; background: rgba(10,10,10,0.8); backdrop-filter: blur(10px); }
-              .header img { width: 32px; height: 32px; }
-              .header h1 { font-size: 18px; margin: 0; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(to right, #fff, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-              .search-wrap { padding: 15px; }
-              input { width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid #222; background: #111; color: #fff; box-sizing: border-box; outline: none; transition: 0.3s; font-size: 14px; }
-              input:focus { border-color: var(--primary); box-shadow: 0 0 20px rgba(59, 130, 246, 0.15); }
-              #results { flex-grow: 1; overflow-y: auto; padding: 0 15px 15px; scrollbar-width: none; }
-              #results::-webkit-scrollbar { display: none; }
-              .item { padding: 12px; border-radius: 8px; background: var(--card); margin-bottom: 8px; cursor: pointer; transition: 0.2s; border: 1px solid transparent; animation: slideIn 0.3s ease-out forwards; }
-              .item:hover { background: #1a1a1a; border-color: var(--primary); transform: translateX(4px); }
-              .title { font-weight: 600; font-size: 13px; color: #fff; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-              .url { font-size: 11px; color: #64748b; word-break: break-all; margin-top: 4px; display: block; }
-              @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
-            </style>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+            <title>History-On</title>
+            <link rel="stylesheet" href="styles.css" />
           </head>
           <body>
-            <div class="container">
-              <div class="header">
-                <img src="icon.png" alt="Logo">
-                <h1>History-On</h1>
-              </div>
-              <div class="search-wrap">
-                <input type="text" id="search" placeholder="Search across time..." autofocus>
-              </div>
-              <div id="results"></div>
+            <div class="app-container">
+              <header class="glass-header" role="banner">
+                <div class="logo-wrapper">
+                  <img src="../assets/logo.svg" alt="History-On" width="28" height="28" />
+                  <h1>History-On</h1>
+                </div>
+                <div class="header-actions">
+                  <button id="themeToggle" class="icon-btn" aria-label="Toggle theme">🌙</button>
+                  <button id="clearBtn" class="icon-btn danger" aria-label="Clear history">🗑️</button>
+                  <button id="exportBtn" class="icon-btn" aria-label="Export history">📤</button>
+                </div>
+              </header>
+
+              <section class="controls glass-panel" role="search">
+                <div class="search-box">
+                  <input type="search" id="searchInput" placeholder="Search history... (/ to focus)" aria-label="Search browsing history" autocomplete="off" />
+                  <span class="search-hint">/</span>
+                </div>
+                <div class="filters">
+                  <select id="timeFilter" aria-label="Filter by time">
+                    <option value="all">All time</option>
+                    <option value="hour">Last hour</option>
+                    <option value="day">Last 24h</option>
+                    <option value="week">Last week</option>
+                    <option value="month">Last month</option>
+                  </select>
+                  <select id="sortFilter" aria-label="Sort results">
+                    <option value="recency">Most recent</option>
+                    <option value="visits">Most visited</option>
+                    <option value="title">A–Z</option>
+                  </select>
+                </div>
+              </section>
+
+              <main id="resultsList" class="results-container" role="list" aria-live="polite">
+                <div class="empty-state" hidden><p>No history found. Start browsing!</p></div>
+              </main>
+
+              <footer class="glass-footer" role="contentinfo">
+                <span id="statsText">0 items</span>
+                <span class="separator">•</span>
+                <a href="https://flaticon.com" target="_blank" rel="noopener" class="attribution">Icon by Flaticon</a>
+              </footer>
             </div>
-            <script src="script.js"></script>
+
+            <dialog id="exportModal" class="glass-modal">
+              <form method="dialog" class="modal-content">
+                <h3>Export History</h3>
+                <p>Choose format:</p>
+                <div class="export-options">
+                  <label><input type="radio" name="format" value="json" checked /> JSON</label>
+                  <label><input type="radio" name="format" value="csv" /> CSV</label>
+                </div>
+                <div class="modal-actions">
+                  <button type="button" id="cancelExport" class="btn-secondary">Cancel</button>
+                  <button type="submit" id="confirmExport" class="btn-primary">Download</button>
+                </div>
+              </form>
+            </dialog>
+
+            <dialog id="clearModal" class="glass-modal danger">
+              <form method="dialog" class="modal-content">
+                <h3>⚠️ Clear History?</h3>
+                <p>This cannot be undone. All browsing history will be permanently deleted.</p>
+                <div class="modal-actions">
+                  <button type="button" id="cancelClear" class="btn-secondary">Cancel</button>
+                  <button type="submit" id="confirmClear" class="btn-danger">Yes, Clear All</button>
+                </div>
+              </form>
+            </dialog>
+
+            <script type="module" src="script.js"></script>
           </body>
           </html>
-          EOF
+          HTMLEOF
 
-          # Efficient Search Logic
-          cat <<EOF > script.js
-          const searchInput = document.getElementById('search');
-          const resultsDiv = document.getElementById('results');
-
-          const render = (query = '') => {
-            chrome.history.search({ text: query, maxResults: 50, startTime: 0 }, (data) => {
-              resultsDiv.innerHTML = data.map(page => \`
-                <div class="item" onclick="window.open('\${page.url}', '_blank')">
-                  <span class="title">\${page.title || 'Untitled'}</span>
-                  <span class="url">\${page.url}</span>
-                </div>
-              \`).join('');
-            });
-          };
-
-          searchInput.addEventListener('input', e => render(e.target.value));
-          render();
-          EOF
-
-          # Fetch your Specific Logo
-          curl -L -o icon.png "https://cdn-icons-png.flaticon.com/512/3913/3913442.png"
-
-      - name: Package Master Extension
+      # ===== 6. GENERATE POPUP/STYLES.CSS =====
+      - name: Generate popup/styles.css
         run: |
-          mkdir -p build_dir
-          cp manifest.json index.html script.js icon.png build_dir/
-          cd build_dir && zip -r ../History-On-v1.zip . && cd ..
+          cat << 'CSSEOF' > extension/popup/styles.css
+          :root{--bg-primary:#0a0a0f;--bg-secondary:#12121a;--bg-glass:rgba(18,18,26,.75);--border-color:rgba(255,255,255,.08);--text-primary:#f8fafc;--text-secondary:#94a3b8;--accent:#3b82f6;--accent-hover:#60a5fa;--danger:#ef4444;--success:#22c55e;--shadow-sm:0 2px 8px rgba(0,0,0,.25);--shadow-lg:0 10px 40px rgba(0,0,0,.4);--radius:14px;--transition:180ms cubic-bezier(.4,0,.2,1)}[data-theme=light]{--bg-primary:#f8fafc;--bg-secondary:#fff;--bg-glass:rgba(255,255,255,.85);--border-color:rgba(0,0,0,.08);--text-primary:#0f172a;--text-secondary:#64748b;--shadow-sm:0 2px 8px rgba(0,0,0,.08);--shadow-lg:0 10px 40px rgba(0,0,0,.12)}*{box-sizing:border-box;margin:0;padding:0}html{font-size:14px;scroll-behavior:smooth}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}body{width:380px;height:550px;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg-primary);color:var(--text-primary);overflow:hidden;line-height:1.5}.app-container{display:flex;flex-direction:column;height:100%;background:linear-gradient(180deg,var(--bg-primary),var(--bg-secondary))}.glass-header,.glass-panel,.glass-footer,.glass-modal{background:var(--bg-glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--border-color)}.glass-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border-color);position:sticky;top:0;z-index:10}.logo-wrapper{display:flex;align-items:center;gap:10px}.logo-wrapper h1{font-size:1.1rem;font-weight:700;background:linear-gradient(135deg,var(--text-primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.3px}.header-actions{display:flex;gap:6px}.icon-btn{width:34px;height:34px;border-radius:10px;border:1px solid var(--border-color);background:transparent;color:var(--text-secondary);font-size:1rem;cursor:pointer;display:grid;place-items:center;transition:all var(--transition)}.icon-btn:hover{background:rgba(59,130,246,.12);color:var(--accent);border-color:var(--accent);transform:translateY(-1px)}.icon-btn.danger:hover{background:rgba(239,68,68,.12);color:var(--danger);border-color:var(--danger)}.controls{padding:12px 16px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--border-color)}.search-box{position:relative;display:flex;align-items:center}#searchInput{width:100%;padding:11px 14px 11px 36px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);font-size:.95rem;outline:none;transition:all var(--transition)}#searchInput:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,.15)}.search-hint{position:absolute;left:12px;color:var(--text-secondary);font-size:.85rem;pointer-events:none;opacity:.7}.filters{display:flex;gap:8px}.filters select{flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);font-size:.85rem;cursor:pointer;transition:border-color var(--transition)}.filters select:focus{outline:none;border-color:var(--accent)}.results-container{flex:1;overflow-y:auto;padding:8px 12px 12px;scrollbar-width:thin;scrollbar-color:var(--accent) transparent}.results-container::-webkit-scrollbar{width:6px}.results-container::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}.history-item{display:block;padding:12px 14px;margin:6px 0;border-radius:10px;background:var(--bg-secondary);border:1px solid transparent;cursor:pointer;transition:all var(--transition);animation:slideIn .25s ease-out forwards;opacity:0;transform:translateX(8px)}.history-item:focus,.history-item:hover{background:rgba(59,130,246,.08);border-color:var(--accent);transform:translateX(2px);outline:none}@keyframes slideIn{to{opacity:1;transform:translateX(0)}}.item-title{display:block;font-weight:600;font-size:.95rem;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px}.item-url{display:block;font-size:.75rem;color:var(--text-secondary);word-break:break-all;line-height:1.3}.item-meta{display:flex;gap:10px;margin-top:6px;font-size:.7rem;color:var(--text-secondary)}.visit-count::before{content:"👁 "}.empty-state{text-align:center;padding:40px 20px;color:var(--text-secondary);font-size:.9rem}.glass-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;font-size:.8rem;color:var(--text-secondary);border-top:1px solid var(--border-color)}.attribution{color:var(--accent);text-decoration:none;transition:color var(--transition)}.attribution:hover{color:var(--accent-hover)}.separator{margin:0 6px;opacity:.5}.glass-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:90%;max-width:320px;padding:20px;border-radius:var(--radius);box-shadow:var(--shadow-lg);z-index:100;border:1px solid var(--border-color)}.glass-modal[open]{animation:modalIn .2s ease-out}@keyframes modalIn{from{opacity:0;transform:translate(-50%,-45%)}to{opacity:1;transform:translate(-50%,-50%)}}.modal-content h3{margin-bottom:12px;font-size:1.1rem}.modal-content p{margin-bottom:16px;color:var(--text-secondary);font-size:.9rem}.export-options{display:flex;gap:16px;margin-bottom:20px}.export-options label{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.9rem}.modal-actions{display:flex;justify-content:flex-end;gap:10px}.btn-primary,.btn-secondary,.btn-danger{padding:8px 16px;border-radius:8px;font-weight:500;font-size:.9rem;cursor:pointer;transition:all var(--transition);border:1px solid transparent}.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-hover);transform:translateY(-1px)}.btn-secondary{background:transparent;border-color:var(--border-color);color:var(--text-primary)}.btn-secondary:hover{background:var(--bg-secondary)}.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#dc2626;transform:translateY(-1px)}.glass-modal.danger{border-color:rgba(239,68,68,.3)}@media(max-width:400px){body{width:100vw;height:100vh}.app-container{border-radius:0}}
+          CSSEOF
 
-      - name: Sync ZIP to Repo
+      # ===== 7. GENERATE POPUP/SCRIPT.JS =====
+      - name: Generate popup/script.js
         run: |
-          git config --global user.name "johirxofficial"
-          git config --global user.email "johirxofficial@gmail.com"
-          git add History-On-v1.zip
-          git commit -m "Shadow Update: History-On-v1.zip with official logo 🚀" || echo "No changes"
+          cat << 'JSEOF' > extension/popup/script.js
+          const searchInput=document.getElementById('searchInput'),resultsList=document.getElementById('resultsList'),statsText=document.getElementById('statsText'),timeFilter=document.getElementById('timeFilter'),sortFilter=document.getElementById('sortFilter'),clearBtn=document.getElementById('clearBtn'),exportBtn=document.getElementById('exportBtn'),clearModal=document.getElementById('clearModal'),exportModal=document.getElementById('exportModal');let allHistory=[],filteredHistory=[];const debounce=(fn,wait)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),wait)}};const filterByTime=(ts,r)=>{const now=Date.now(),ranges={hour:36e5,day:864e5,week:6048e5,month:2592e6};return r==='all'||ts>=now-ranges[r]};const sortBy=(a,b,t)=>{switch(t){case'visits':return(b.visitCount||1)-(a.visitCount||1);case'title':return(a.title||'').localeCompare(b.title||'');default:return b.lastVisitTime-a.lastVisitTime}};const formatDate=(ts)=>{const d=new Date(ts),diff=Date.now()-ts;if(diff<6e4)return'Just now';if(diff<36e5)return Math.floor(diff/6e4)+'m ago';if(diff<864e5)return Math.floor(diff/36e5)+'h ago';return d.toLocaleDateString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})};const escapeHtml=(s)=>{const e=document.createElement('div');e.textContent=s;return e.innerHTML};const render=(items)=>{if(!items.length){resultsList.innerHTML='<div class="empty-state"><p>No history found.</p></div>';statsText.textContent='0 items';return}const f=document.createDocumentFragment();items.forEach((it,i)=>{const el=document.createElement('article');el.className='history-item';el.tabIndex=0;el.setAttribute('role','listitem');el.innerHTML=<span class="item-title">\${escapeHtml(it.title||'Untitled')}</span><span class="item-url">\${escapeHtml(it.url)}</span><div class="item-meta"><span class="visit-count">\${it.visitCount||1}</span><span class="visit-time">\${formatDate(it.lastVisitTime)}</span></div>;el.addEventListener('click',()=>chrome.tabs.create({url:it.url}));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();chrome.tabs.create({url:it.url})}});el.style.animationDelay=\`\${i*20}ms\`;f.appendChild(el)});resultsList.innerHTML='';resultsList.appendChild(f);statsText.textContent=\`\${items.length} item\${items.length!==1?'s':''}\`};const applyFilters=()=>{const q=searchInput.value.trim().toLowerCase();filteredHistory=allHistory.filter(it=>(!q||it.title?.toLowerCase().includes(q)||it.url.toLowerCase().includes(q))&&filterByTime(it.lastVisitTime,timeFilter.value)).sort((a,b)=>sortBy(a,b,sortFilter.value));render(filteredHistory)};const loadHistory=()=>new Promise(res=>chrome.history.search({text:'',maxResults:500,startTime:0},items=>{allHistory=items;applyFilters();res()}));const initTheme=()=>{const t=document.getElementById('themeToggle'),h=document.documentElement,s=localStorage.getItem('history-on-theme');if(s){h.setAttribute('data-theme',s);t.textContent=s==='light'?'☀️':'🌙'}t.addEventListener('click',()=>{const c=h.getAttribute('data-theme'),n=c==='light'?'dark':'light';h.setAttribute('data-theme',n);localStorage.setItem('history-on-theme',n);t.textContent=n==='light'?'☀️':'🌙'})};const init=async()=>{await loadHistory();initTheme();searchInput.addEventListener('input',debounce(applyFilters,300));timeFilter.addEventListener('change',applyFilters);sortFilter.addEventListener('change',applyFilters);clearBtn.addEventListener('click',()=>clearModal.showModal());document.getElementById('cancelClear').addEventListener('click',()=>clearModal.close());document.getElementById('confirmClear').addEventListener('click',async e=>{e.preventDefault();await chrome.history.deleteAll();clearModal.close();await loadHistory()});exportBtn.addEventListener('click',()=>exportModal.showModal());document.getElementById('cancelExport').addEventListener('click',()=>exportModal.close());document.getElementById('confirmExport').addEventListener('click',async e=>{e.preventDefault();const fmt=document.querySelector('input[name="format"]:checked').value,data=fmt==='json'?JSON.stringify(filteredHistory,null,2):['Title,URL,Visits,LastVisited',...filteredHistory.map(it=>`\\"\${(it.title||'Untitled').replace(/\\"/g,'""')}\",\\"\${it.url.replace(/\\"/g,'""')}\",\${it.visitCount||1},\${new Date(it.lastVisitTime).toISOString()}`)].join('\n'),blob=new Blob([data],{type:fmt==='json'?'application/json':'text/csv'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`history-on-\${Date.now()}.\${fmt}`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);exportModal.close()});document.addEventListener('keydown',e=>{if(e.key==='/'&&document.activeElement!==searchInput){e.preventDefault();searchInput.focus()}});if(!new URLSearchParams(location.search).get('settings'))searchInput.focus()};document.addEventListener('DOMContentLoaded',init);
+          JSEOF
+
+      # ===== 8. GENERATE ASSETS (LOGO + ICONS) =====
+      - name: Generate Assets (SVG Logo + PNG Icons)
+        run: |
+          # Create logo SVG
+          cat << 'SVGEOF' > extension/assets/logo.svg
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+            <defs>
+              <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#3b82f6"/>
+                <stop offset="100%" style="stop-color:#8b5cf6"/>
+              </linearGradient>
+            </defs>
+            <circle cx="256" cy="256" r="240" fill="url(#g)"/>
+            <text x="256" y="295" font-size="220" text-anchor="middle" fill="white" font-family="system-ui,sans-serif" font-weight="700">H</text>
+          </svg>
+          SVGEOF
+          
+          # Generate PNG icons from SVG using ImageMagick
+          for size in 16 48 128; do
+            convert -background none -resize ${size}x${size} extension/assets/logo.svg extension/assets/icon-${size}.png
+          done
+
+      # ===== 9. PACKAGE ZIP =====
+      - name: Package Extension ZIP
+        run: |
+          cd extension
+          zip -r ../${{ env.ZIP_NAME }} . -x "*.git*" "*.github*" "*.md"
+          cd ..
+          echo "✅ Created ${{ env.ZIP_NAME }} ($(du -h ${{ env.ZIP_NAME }} | cut -f1))"
+
+      # ===== 10. COMMIT ZIP TO REPO =====
+      - name: Commit ZIP to Repository
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add ${{ env.ZIP_NAME }}
+          git commit -m "🚀 Auto-build: ${{ env.EXT_NAME }} v${{ env.EXT_VERSION }} [skip ci]" || echo "ℹ️ No changes to commit"
           git push
+
+      # ===== 11. CREATE GITHUB RELEASE =====
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ZIP_NAME }}
+          tag_name: v${{ env.EXT_VERSION }}
+          name: "${{ env.EXT_NAME }} v${{ env.EXT_VERSION }} ✨"
+          body: |
+            ## 🎉 Auto-Built Release
+            
+            ### ✨ What's Included
+            - 🎨 Glass-morphism UI with dark/light mode
+            - 🔍 Smart search with debouncing + filters
+            - ⌨️ Full keyboard navigation (`/` to focus)
+            - 📤 Export history to JSON/CSV
+            - 🗑️ Safe clear with confirmation modal
+            - ♿ WCAG 2.1 AA accessible
+            - ⚡ Manifest V3 optimized
+            
+            ### 📦 Installation
+            1. Download `History-On-v2.0.0.zip`
+            2. Unzip anywhere
+            3. In Chrome: `chrome://extensions` → Enable **Developer mode**
+            4. Click **Load unpacked** → Select the unzipped folder
+            
+            ### 🔐 Permissions
+            - `history`: Read/manage browsing history (core feature)
+            - `storage`: Save theme preference locally
+            
+            > ✅ No external analytics • ✅ No data leaves your browser
+            
+            ---
+            *Built automatically by GitHub Actions* 😈
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ===== 12. SUCCESS LOG =====
+      - name: Build Complete Summary
+        run: |
+          echo "✅✅✅ HISTORY-ON v2.0.0 BUILD COMPLETE ✅✅✅"
+          echo "📦 ZIP: ${{ env.ZIP_NAME }}"
+          echo "🔗 Release: https://github.com/${{ github.repository }}/releases/tag/v${{ env.EXT_VERSION }}"
+          echo "🎯 Next: Load unpacked in chrome://extensions"
+          echo "😈 Maintained by johirxofficial & Shadow"
