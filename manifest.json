@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "History-On",
+  "version": "1.0.0",
+  "description": "Premium side-panel history engine by johirxofficial.",
+  "permissions": ["history", "storage"],
+  "action": {
+    "default_popup": "index.html"
+  },
+  "icons": {
+    "128": "icon.png"
+  }
+}
